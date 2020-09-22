@@ -5,6 +5,7 @@ let commandIntervals = [];
 let hasGuard = false;
 let limitMessage = 10;
 let commands = [];
+let intervalCheckMessage = 0;
 
 function log(message) {
   console.log(new Date(), "\t", message);
@@ -21,7 +22,7 @@ try {
 }
 
 function checkNextMessages(around, limit) {
-  api
+  return api
     .getMessages({ around, limit })
     .then(res => {
       const data = res.data || [];
@@ -30,10 +31,23 @@ function checkNextMessages(around, limit) {
       if (api.hasEpicGuard(data.slice(0, sliceCount)) !== undefined) {
         hasGuard = true;
         log("WARNING !!! There is Epic Guard");
+        if (intervalCheckMessage === 0) {
+          intervalCheckMessage = setInterval(() => {
+            log("Check messages to continue bot");
+            checkNextMessages(undefined, 30).then(hasGuardian => {
+              if (hasGuardian === false) {
+                clearInterval(intervalCheckMessage);
+                intervalCheckMessage = 0;
+              }
+            });
+          }, 30 * 1000);
+        }
       } else {
         hasGuard = false;
         log("No Guard");
       }
+
+      return hasGuard;
     })
     .catch(log);
 }
