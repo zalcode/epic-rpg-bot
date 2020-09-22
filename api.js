@@ -1,4 +1,11 @@
 const axios = require("axios");
+const rateLimit = require("axios-rate-limit");
+
+const http = rateLimit(axios.create(), {
+  maxRequests: 1,
+  perMilliseconds: 2000,
+  maxRPS: 1
+});
 
 function getEnv() {
   return {
@@ -29,7 +36,7 @@ function createConfig() {
 function sendMessage(command) {
   const { channelId } = getEnv();
 
-  return axios.post(
+  return http.post(
     `https://discord.com/api/v8/channels/${channelId}/messages`,
     {
       content: `RPG ${command}`,
@@ -39,13 +46,16 @@ function sendMessage(command) {
   );
 }
 
-function getMessages() {
+function getMessages(params = {}) {
   const { channelId } = getEnv();
 
-  return axios.get(
-    `https://discord.com/api/v8/channels/${channelId}/messages?limit=50`,
-    createConfig()
-  );
+  return http.get(`https://discord.com/api/v8/channels/${channelId}/messages`, {
+    ...createConfig(),
+    params: {
+      limit: 50,
+      ...params
+    }
+  });
 }
 
 function hasEpicGuard(data = []) {
