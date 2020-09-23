@@ -1,31 +1,16 @@
 const api = require("./api");
+const { log, ...utils } = require("./utils");
 
 const stopBot = process.env.STOP_BOT === "true";
-let commandIntervals = [];
+
 let hasGuard = false;
 let limitMessage = 10;
-let commands = [];
 let intervalCheckRelease = 0;
-let shiftCommand = [];
 let limitMessageCheckJail = process.env.LIMIT_MESSAGES_JAIL || 30;
-
-function log(message) {
-  console.log(new Date(), "\t", message);
-}
-
-try {
-  commands = JSON.parse(process.env.COMMANDS);
-} catch (error) {
-  console.log(error);
-  commands = [
-    { text: "hunt", interval: 63 },
-    { text: "pickup", interval: 303 }
-  ];
-}
 
 function checkMessagesReleasement() {
   return api.getMessages({ limit: limitMessageCheckJail }).then(res => {
-    return api.hasRelease(res.data);
+    return utils.hasRelease(res.data);
   });
 }
 
@@ -36,20 +21,28 @@ function checkNextMessages(around, limit) {
       const data = res.data || [];
       const sliceCount = parseInt(limit / 2, 10);
 
-      if (api.hasEpicGuard(data.slice(0, sliceCount)) !== undefined) {
+      if (utils.hasEpicGuard(data.slice(0, sliceCount)) !== undefined) {
         hasGuard = true;
         log("WARNING !!! There is Epic Guard");
 
         if (intervalCheckRelease === 0) {
           intervalCheckRelease = setInterval(() => {
             log("Check has messages releasement");
-            checkMessagesReleasement().then(hasRelease => {
-              if (hasRelease) {
-                clearInterval(intervalCheckRelease);
-                intervalCheckRelease = 0;
-                hasGuard = false;
-              }
-            });
+            checkMessagesReleasement()
+              .then(hasRelease => {
+                if (hasRelease) {
+                  log("Success Release");
+                  clearInterval(intervalCheckRelease);
+                  intervalCheckRelease = 0;
+                  hasGuard = false;
+                } else {
+                  log("Release message not found");
+                }
+              })
+              .catch(err => {
+                log("ERROR Get messages release");
+                log(err);
+              });
           }, 30 * 1000);
         }
       } else {
@@ -60,19 +53,6 @@ function checkNextMessages(around, limit) {
       return hasGuard;
     })
     .catch(log);
-}
-
-function getShiftCommand(indexCommand, text = []) {
-  if (
-    shiftCommand[indexCommand] === undefined ||
-    shiftCommand[indexCommand] === text.length - 1
-  ) {
-    shiftCommand[indexCommand] = 0;
-  } else {
-    shiftCommand[indexCommand]++;
-  }
-
-  return shiftCommand[indexCommand];
 }
 
 function runCommand(command) {
@@ -93,17 +73,32 @@ function runCommand(command) {
     .catch(err => log(err));
 }
 
+let commandIntervals = [];
+let commands = [];
+
+try {
+  commands = JSON.parse(process.env.COMMANDS);
+} catch (error) {
+  console.log(error);
+  commands = [
+    { text: "hunt", interval: 63 },
+    { text: "pickup", interval: 303 }
+  ];
+}
+
 if (!stopBot && Array.isArray(commands)) {
   for (let index = 0; index < commands.length; index++) {
     const { text, interval } = commands[index] || {};
-    commandIntervals[index] = setInterval(() => {
+    const callbackCommand = () => {
       if (Array.isArray(text) && text.length > 0) {
-        const textIndex = getShiftCommand(index, text);
+        const textIndex = utils.getShiftCommand(index, text.length);
         runCommand(text[textIndex]);
       } else if (typeof text === "string") {
         runCommand(text);
       }
-    }, interval * 1000);
+    };
+    callbackCommand();
+    commandIntervals[index] = setInterval(callbackCommand, interval * 1000);
     log(`START COMMAND ${text}`);
   }
 } else if (stopBot) {
