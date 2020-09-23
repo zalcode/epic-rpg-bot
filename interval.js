@@ -7,6 +7,7 @@ let limitMessage = 10;
 let commands = [];
 let intervalCheckMessage = 0;
 let shiftCommand = [];
+let limitMessageCheckJail = process.env.LIMIT_MESSAGES_JAIL || 30;
 
 function log(message) {
   console.log(new Date(), "\t", message);
@@ -35,12 +36,14 @@ function checkNextMessages(around, limit) {
         if (intervalCheckMessage === 0) {
           intervalCheckMessage = setInterval(() => {
             log("Check messages to continue bot");
-            checkNextMessages(undefined, 30).then(hasGuardian => {
-              if (hasGuardian === false) {
-                clearInterval(intervalCheckMessage);
-                intervalCheckMessage = 0;
+            checkNextMessages(undefined, limitMessageCheckJail).then(
+              hasGuardian => {
+                if (hasGuardian === false) {
+                  clearInterval(intervalCheckMessage);
+                  intervalCheckMessage = 0;
+                }
               }
-            });
+            );
           }, 30 * 1000);
         }
       } else {
