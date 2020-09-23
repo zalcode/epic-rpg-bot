@@ -6,6 +6,7 @@ let hasGuard = false;
 let limitMessage = 10;
 let commands = [];
 let intervalCheckMessage = 0;
+let shiftCommand = [];
 
 function log(message) {
   console.log(new Date(), "\t", message);
@@ -52,6 +53,19 @@ function checkNextMessages(around, limit) {
     .catch(log);
 }
 
+function getShiftCommand(indexCommand, text = []) {
+  if (
+    shiftCommand[indexCommand] === undefined ||
+    shiftCommand[indexCommand] === text.length - 1
+  ) {
+    shiftCommand[indexCommand] = 0;
+  } else {
+    shiftCommand[indexCommand]++;
+  }
+
+  return shiftCommand[indexCommand];
+}
+
 function runCommand(command) {
   if (hasGuard) {
     log(`DON'T RUN ${command} => THERE IS EPIC GUARD`);
@@ -74,7 +88,12 @@ if (!stopBot && Array.isArray(commands)) {
   for (let index = 0; index < commands.length; index++) {
     const { text, interval } = commands[index] || {};
     commandIntervals[index] = setInterval(() => {
-      runCommand(text);
+      if (Array.isArray(text) && text.length > 0) {
+        const textIndex = getShiftCommand(index, text);
+        runCommand(text[textIndex]);
+      } else if (typeof text === "string") {
+        runCommand(text);
+      }
     }, interval * 1000);
     log(`START COMMAND ${text}`);
   }
