@@ -5,7 +5,7 @@ let commandIntervals = [];
 let hasGuard = false;
 let limitMessage = 10;
 let commands = [];
-let intervalCheckMessage = 0;
+let intervalCheckRelease = 0;
 let shiftCommand = [];
 let limitMessageCheckJail = process.env.LIMIT_MESSAGES_JAIL || 30;
 
@@ -23,6 +23,12 @@ try {
   ];
 }
 
+function checkMessagesReleasement() {
+  return api.getMessages({ limit: limitMessageCheckJail }).then(res => {
+    return api.hasRelease(res.data);
+  });
+}
+
 function checkNextMessages(around, limit) {
   return api
     .getMessages({ around, limit })
@@ -33,17 +39,17 @@ function checkNextMessages(around, limit) {
       if (api.hasEpicGuard(data.slice(0, sliceCount)) !== undefined) {
         hasGuard = true;
         log("WARNING !!! There is Epic Guard");
-        if (intervalCheckMessage === 0) {
-          intervalCheckMessage = setInterval(() => {
-            log("Check messages to continue bot");
-            checkNextMessages(undefined, limitMessageCheckJail).then(
-              hasGuardian => {
-                if (hasGuardian === false) {
-                  clearInterval(intervalCheckMessage);
-                  intervalCheckMessage = 0;
-                }
+
+        if (intervalCheckRelease === 0) {
+          intervalCheckRelease = setInterval(() => {
+            log("Check has messages releasement");
+            checkMessagesReleasement().then(hasRelease => {
+              if (hasRelease) {
+                clearInterval(intervalCheckRelease);
+                intervalCheckRelease = 0;
+                hasGuard = false;
               }
-            );
+            });
           }, 30 * 1000);
         }
       } else {

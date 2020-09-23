@@ -72,8 +72,43 @@ function hasEpicGuard(data = []) {
   });
 }
 
+function hasRelease(data = []) {
+  const { username } = getEnv();
+  let hasTypeJail = false;
+  let hasTypeProtest = false;
+  let hasGuardRelease = false;
+  const regexHandleByUser = new RegExp(
+    `Everything seems fine ***${username}***, keep playing`,
+    "g"
+  );
+
+  for (let index = 0; index < data.length; index++) {
+    const { author, content } = data[index];
+
+    if (author.username === "EPIC RPG") {
+      if (regexHandleByUser.test(content)) {
+        return true;
+      }
+
+      if (hasGuardRelease === false) {
+        hasTypeRelease = /Fine, i will let you go/g.test(content);
+      }
+    } else if (author.username === username) {
+      if (hasTypeJail === false) {
+        hasTypeJail = /rpg jail/g.test(content.trim().toLowerCase());
+      }
+      if (hasTypeProtest === false) {
+        hasTypeProtest = /protest/g.test(content.trim().toLowerCase());
+      }
+    }
+  }
+
+  return hasTypeJail && hasTypeProtest && hasGuardRelease;
+}
+
 module.exports = {
   hasEpicGuard,
+  hasRelease,
   getMessages,
   sendMessage
 };
