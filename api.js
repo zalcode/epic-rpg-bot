@@ -78,7 +78,7 @@ function hasRelease(data = []) {
   let hasTypeProtest = false;
   let hasGuardRelease = false;
   const regexHandleByUser = new RegExp(
-    `Everything seems fine ***${username}***, keep playing`,
+    `Everything seems fine \\*\\*\\*${username}\\*\\*\\*, keep playing`,
     "g"
   );
 
