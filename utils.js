@@ -3,7 +3,7 @@ let shiftCommand = [];
 function getShiftCommand(indexCommand, textLength = 1) {
   if (
     shiftCommand[indexCommand] === undefined ||
-    shiftCommand[indexCommand] === text.length - 1
+    shiftCommand[indexCommand] === textLength - 1
   ) {
     shiftCommand[indexCommand] = 0;
   } else {
