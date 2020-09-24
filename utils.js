@@ -46,7 +46,7 @@ function hasRelease(data = []) {
   let hasTypeProtest = false;
   let hasGuardRelease = false;
   const regexHandleByUser = new RegExp(
-    `Everything seems fine \\*\\*\\*${username}\\*\\*\\*, keep playing`,
+    `Everything seems fine \\*\\*${username}\\*\\*, keep playing`,
     "g"
   );
 
@@ -55,6 +55,7 @@ function hasRelease(data = []) {
 
     if (author.username === "EPIC RPG") {
       if (regexHandleByUser.test(content)) {
+        log("Already handle by user it self");
         return true;
       }
 
@@ -71,9 +72,9 @@ function hasRelease(data = []) {
     }
   }
 
-  console.log("hasTypeJail", hasTypeJail);
-  console.log("hasTypeProtest", hasTypeProtest);
-  console.log("hasGuardRelease", hasGuardRelease);
+  log(`is ${username} wrote 'rpg jail' ?`, hasTypeJail);
+  log(`is ${username} wrote 'protest' ?`, hasTypeProtest);
+  log(`is EPIC RPG wrote 'Fine, i will let you go' ?`, hasGuardRelease);
 
   return hasTypeJail && hasTypeProtest && hasGuardRelease;
 }
