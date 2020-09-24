@@ -72,9 +72,9 @@ function hasRelease(data = []) {
     }
   }
 
-  log(`is ${username} wrote 'rpg jail' ?`, hasTypeJail);
-  log(`is ${username} wrote 'protest' ?`, hasTypeProtest);
-  log(`is EPIC RPG wrote 'Fine, i will let you go' ?`, hasGuardRelease);
+  log(`is ${username} wrote 'rpg jail' ? ${hasTypeJail}`);
+  log(`is ${username} wrote 'protest' ? ${hasTypeProtest}`);
+  log(`is EPIC RPG wrote 'Fine, i will let you go' ? ${hasGuardRelease}`);
 
   return hasTypeJail && hasTypeProtest && hasGuardRelease;
 }
