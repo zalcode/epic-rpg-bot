@@ -49,7 +49,18 @@ function getMessages(params = {}) {
   });
 }
 
+function typing() {
+  const { channelId } = utils.getEnv();
+
+  return http.post(
+    `https://discord.com/api/v8/channels/${channelId}/typing`,
+    {},
+    createConfig()
+  );
+}
+
 module.exports = {
+  typing,
   getMessages,
   sendMessage
 };

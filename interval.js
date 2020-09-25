@@ -61,6 +61,9 @@ function runCommand(command) {
     return;
   }
 
+  // typing effect
+  api.typing().catch(err => log(err));
+
   api
     .sendMessage(command)
     .then(res => {
