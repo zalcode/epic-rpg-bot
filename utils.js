@@ -18,12 +18,13 @@ function getEnv() {
     superProperty: process.env.SUPER_PROPERTY,
     token: process.env.TOKEN,
     channelId: process.env.CHANNEL_ID,
-    username: process.env.USERNAME
+    username: process.env.USERNAME,
+    minHP: process.env.MIN_HP
   };
 }
 
-function log(message) {
-  console.log(new Date(), "\t", message);
+function log(...messages) {
+  console.log(new Date(), "\t", ...messages);
 }
 
 function hasEpicGuard(data = []) {
@@ -79,10 +80,87 @@ function hasRelease(data = []) {
   return hasTypeJail && hasTypeProtest && hasGuardRelease;
 }
 
+function getRemainingHPFromContent(content = "") {
+  const test = content.match(/remaining HP is (.*)$/);
+
+  if (test && test.length > 1 && typeof test[1] === "string") {
+    const hp = test[1].split("/").map(Number);
+    if (hp.length > 1) {
+      const remainingHP = hp[0];
+      log(`Remaining HP => ${hp[0]}/${hp[1]}`);
+      if (!isNaN(remainingHP)) return remainingHP;
+    }
+  }
+
+  log("Can't get remaining HP from message", content);
+
+  return -1;
+}
+
+function getRemainingHPFromProfile(fields = []) {
+  const fieldStats = fields.find(f => f.name === "STATS");
+
+  if (fieldStats) {
+    const match = fieldStats.value.match(/([0-9]+)\/([0-9]+)$/);
+    if (match && match.length >= 3) {
+      const remainingHP = parseInt(match[1], 10);
+      if (!isNaN(remainingHP)) return remainingHP;
+    }
+  }
+
+  return -1;
+}
+
+function isProfileMessage(username = "", embeds = []) {
+  if (embeds.length > 0) {
+    const embed = embeds[0];
+    return embed.author.name.indexOf(`${username}'s profile`) >= 0;
+  }
+
+  return false;
+}
+
+function isHunting(username = "", content = "") {
+  const regexHandleByUser = new RegExp(
+    `\\*\\*${username}\\*\\* found and killed`,
+    "g"
+  );
+
+  return regexHandleByUser.test(content);
+}
+
+function isMentionUser(username = "", content = "") {
+  const regexHandleByUser = new RegExp(`\\*\\*${username}\\*\\*`, "g");
+}
+
+function isNeedHealAfterHunting(username = "", messages = [], minHP = 100) {
+  for (let index = 0; index < messages.length; index++) {
+    const { author = {}, content = "" } = messages[index];
+    if (author.username === "EPIC RPG" && isHunting(username, content)) {
+      log("Min HP", minHP);
+      const remainingHP = getRemainingHPFromContent(content);
+      return remainingHP >= 0 && remainingHP <= minHP;
+    }
+  }
+}
+
+function isNeedHealFromProfile(username = "", messages = [], minHP = 100) {
+  for (let index = 0; index < messages.length; index++) {
+    const { author = {}, embeds = [] } = messages[index];
+    if (author.username === "EPIC RPG" && isProfileMessage(username, embeds)) {
+      log("Min HP", minHP);
+      const remainingHP = getRemainingHPFromProfile(embeds[0].fields);
+      return remainingHP >= 0 && remainingHP <= minHP;
+    }
+  }
+}
+
 module.exports = {
   getShiftCommand,
   log,
   hasRelease,
   hasEpicGuard,
-  getEnv
+  getEnv,
+  isNeedHealAfterHunting,
+  isNeedHealFromProfile
 };

@@ -14,12 +14,42 @@ function checkMessagesReleasement() {
   });
 }
 
+function checkProfile() {
+  return api
+    .sendMessage("profile")
+    .then(result => {
+      return api
+        .getMessages({ limit: 30 })
+        .then(result => {
+          const env = utils.getEnv();
+          if (
+            utils.isNeedHealFromProfile(env.username, result.data, env.minHP)
+          ) {
+            log("Need Healing");
+            return api.sendMessage("heal").then(_res => {
+              return checkProfile();
+            });
+          }
+        })
+        .catch(log);
+    })
+    .catch(log);
+}
+
 function checkNextMessages(around, limit) {
+  const env = utils.getEnv();
   return api
     .getMessages({ around, limit })
     .then(res => {
       const data = res.data || [];
       const sliceCount = parseInt(limit / 2, 10);
+
+      if (utils.isNeedHealAfterHunting(env.username, data, env.minHP)) {
+        api
+          .sendMessage("HEAL")
+          .then(_ => checkProfile())
+          .catch(log);
+      }
 
       if (utils.hasEpicGuard(data.slice(0, sliceCount)) !== undefined) {
         hasGuard = true;
@@ -89,23 +119,31 @@ try {
   ];
 }
 
-if (!stopBot && Array.isArray(commands)) {
-  for (let index = 0; index < commands.length; index++) {
-    const { text, interval } = commands[index] || {};
-    const callbackCommand = () => {
-      if (Array.isArray(text) && text.length > 0) {
-        const textIndex = utils.getShiftCommand(index, text.length);
-        runCommand(text[textIndex]);
-      } else if (typeof text === "string") {
-        runCommand(text);
-      }
-    };
-    callbackCommand();
-    commandIntervals[index] = setInterval(callbackCommand, interval * 1000);
-    log(`START COMMAND ${text}`);
+function startBot() {
+  if (!stopBot && Array.isArray(commands)) {
+    for (let index = 0; index < commands.length; index++) {
+      const { text, interval } = commands[index] || {};
+      const callbackCommand = () => {
+        if (Array.isArray(text) && text.length > 0) {
+          const textIndex = utils.getShiftCommand(index, text.length);
+          runCommand(text[textIndex]);
+        } else if (typeof text === "string") {
+          runCommand(text);
+        }
+      };
+      callbackCommand();
+      commandIntervals[index] = setInterval(callbackCommand, interval * 1000);
+      log(`START COMMAND ${text}`);
+    }
+  } else if (stopBot) {
+    log("BOT IS STOPED");
+  } else {
+    log("No running command");
   }
-} else if (stopBot) {
-  log("BOT IS STOPED");
-} else {
-  log("No running command");
 }
+
+checkProfile()
+  .then(result => {
+    startBot();
+  })
+  .catch(log);
