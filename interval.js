@@ -51,6 +51,14 @@ function checkNextMessages(around, limit) {
           .catch(log);
       }
 
+      if (utils.isGotLootbox(env.username, data, around)) {
+        log("Found Lootbox");
+        api
+          .sendMessage("OPEN")
+          .then(_ => log("Success open lootbox"))
+          .catch(log);
+      }
+
       if (utils.hasEpicGuard(data.slice(0, sliceCount)) !== undefined) {
         hasGuard = true;
         log("WARNING !!! There is Epic Guard");

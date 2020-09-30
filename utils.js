@@ -155,6 +155,31 @@ function isNeedHealFromProfile(username = "", messages = [], minHP = 100) {
   }
 }
 
+function hasLootbox(username = "", content = "") {
+  const regexHandleByUser = new RegExp(
+    `\\*\\*${username}\\*\\* got a (.*) lootbox`,
+    "g"
+  );
+
+  return regexHandleByUser.test(content);
+}
+
+function isGotLootbox(username = "", messages = [], around) {
+  for (let index = 0; index < messages.length; index++) {
+    const { author = {}, content = "", id } = messages[index];
+
+    if (around == id) {
+      return false;
+    }
+
+    if (author.username === "EPIC RPG" && hasLootbox(username, content)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 module.exports = {
   getShiftCommand,
   log,
@@ -162,5 +187,6 @@ module.exports = {
   hasEpicGuard,
   getEnv,
   isNeedHealAfterHunting,
-  isNeedHealFromProfile
+  isNeedHealFromProfile,
+  isGotLootbox
 };
