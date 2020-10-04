@@ -157,7 +157,7 @@ function isNeedHealFromProfile(username = "", messages = [], minHP = 100) {
 
 function hasLootbox(username = "", content = "") {
   const regexHandleByUser = new RegExp(
-    `\\*\\*${username}\\*\\* got a (.*) lootbox`,
+    `\\*\\*${username}\\*\\* got (.*) lootbox`,
     "g"
   );
 
