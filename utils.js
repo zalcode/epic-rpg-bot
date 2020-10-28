@@ -81,7 +81,7 @@ function hasRelease(data = []) {
 }
 
 function getRemainingHPFromContent(content = "") {
-  const test = content.match(/remaining HP is (.*)$/);
+  const test = content.match(/remaining HP is (.*)/);
 
   if (test && test.length > 1 && typeof test[1] === "string") {
     const hp = test[1].split("/").map(Number);
@@ -91,6 +91,8 @@ function getRemainingHPFromContent(content = "") {
       if (!isNaN(remainingHP)) return remainingHP;
     }
   }
+  const isLost = /(lost fighting)/g.test(content);
+  if (isLost) return 0;
 
   log("Can't get remaining HP from message", content);
 
@@ -127,10 +129,6 @@ function isHunting(username = "", content = "") {
   );
 
   return regexHandleByUser.test(content);
-}
-
-function isMentionUser(username = "", content = "") {
-  const regexHandleByUser = new RegExp(`\\*\\*${username}\\*\\*`, "g");
 }
 
 function isNeedHealAfterHunting(username = "", messages = [], minHP = 100) {
@@ -180,7 +178,37 @@ function isGotLootbox(username = "", messages = [], around) {
   return false;
 }
 
+// CREDIT: https://stackoverflow.com/a/51671987/11376743
+function parseTime(s) {
+  var tokens = { d: 8.64e7, h: 3.6e6, m: 6e4, s: 1e3 };
+  var buff = "";
+  return s.split("").reduce(function(ms, c) {
+    c in tokens ? (ms += buff * tokens[c]) && (buff = "") : (buff += c);
+    return ms;
+  }, 0);
+}
+
+function getCommandsCooldown(fields = []) {
+  const regex = /(Daily|Weekly|Lootbox|Vote|Hunt|Adventure|Training|Duel|Quest \| Epic quest|Chop \| Fish \| Pickup \| Mine|Arena|Dungeon \| Miniboss)\`\*\*\s\(\**((\d+d \d+h \d+m \d+s)|(\d+h \d+m \d+s)|(\d+m \d+s))\**/gm;
+
+  // TODO: THIS IS NOT SAFE CODE
+  return fields.reduce(
+    (result, field) =>
+      Object.assign(
+        result,
+        [...field.value.matchAll(regex)].reduce((result, v) => {
+          const r = v.filter(r => r !== undefined);
+          const key = r[1].split(" | ")[0].toLowerCase();
+          const value = parseTime(r[r.length - 1].replace(/\s/g, ""));
+          return Object.assign(result, { [key]: value });
+        }, {})
+      ),
+    {}
+  );
+}
+
 module.exports = {
+  getCommandsCooldown,
   getShiftCommand,
   log,
   hasRelease,
