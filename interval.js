@@ -42,7 +42,7 @@ function getUserCooldown() {
   });
 }
 
-function starCommands() {
+function startCommands() {
   getUserCooldown().then(cooldown => {
     if (!cooldown) return;
 
@@ -154,7 +154,7 @@ function checkNextMessages(around, limit) {
                   clearInterval(intervalCheckRelease);
                   intervalCheckRelease = 0;
                   hasGuard = false;
-                  starCommands();
+                  startCommands();
                 } else {
                   log("Release message not found");
                 }
@@ -199,7 +199,7 @@ function runCommand(command) {
 if (!stopBot) {
   checkProfile()
     .then(result => {
-      starCommands();
+      startCommands();
     })
     .catch(log);
 }
