@@ -55,7 +55,7 @@ function startCommands() {
             const textIndex = utils.getShiftCommand(index, command.text.length);
             runCommand(command.text[textIndex]);
           } else if (typeof command.text === "string") {
-            runCommand(ommand.command);
+            runCommand(command.text);
           } else {
             runCommand(command.type);
           }
