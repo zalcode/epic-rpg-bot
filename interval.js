@@ -52,8 +52,17 @@ function startCommands() {
         const cooldownTime = cooldown[command.type] || 0;
         const callback = () => {
           if (Array.isArray(command.text) && command.text.length > 0) {
-            const textIndex = utils.getShiftCommand(index, command.text.length);
-            runCommand(command.text[textIndex]);
+            if (command.mode === "seq") {
+              command.text.forEach(text => {
+                runCommand(text);
+              });
+            } else {
+              const textIndex = utils.getShiftCommand(
+                index,
+                command.text.length
+              );
+              runCommand(command.text[textIndex]);
+            }
           } else if (typeof command.text === "string") {
             runCommand(command.text);
           } else {
@@ -74,7 +83,7 @@ function startCommands() {
             callback,
             command.interval * 1000
           );
-        }, cooldownTime + 1000);
+        }, cooldownTime + 3000);
       }
     }
   });
