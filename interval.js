@@ -7,8 +7,9 @@ let hasGuard = false;
 let limitMessage = 10;
 let intervalCheckRelease = 0;
 let limitMessageCheckJail = process.env.LIMIT_MESSAGES_JAIL || 30;
-let commandIntervals = [];
 let commands = [];
+const commandIntervals = [];
+const timeoutValues = [];
 
 try {
   commands = JSON.parse(process.env.COMMANDS);
@@ -53,20 +54,18 @@ function startCommands() {
         const callback = () => {
           if (Array.isArray(command.text) && command.text.length > 0) {
             if (command.mode === "seq") {
-              command.text.forEach(text => {
-                runCommand(text);
-              });
+              return Promise.all(command.text.map(text => runCommand(text)));
             } else {
               const textIndex = utils.getShiftCommand(
                 index,
                 command.text.length
               );
-              runCommand(command.text[textIndex]);
+              return runCommand(command.text[textIndex]);
             }
           } else if (typeof command.text === "string") {
-            runCommand(command.text);
+            return runCommand(command.text);
           } else {
-            runCommand(command.type);
+            return runCommand(command.type);
           }
         };
         if (cooldownTime > 0) {
@@ -77,13 +76,15 @@ function startCommands() {
             "s"
           );
         }
-        setTimeout(() => {
-          callback();
-          commandIntervals[index] = setInterval(
-            callback,
-            command.interval * 1000
-          );
-        }, cooldownTime + 3000);
+
+        timeoutValues[index] = setTimeout(() => {
+          callback().then(() => {
+            commandIntervals[index] = setInterval(
+              callback,
+              command.interval * 1000
+            );
+          });
+        }, cooldownTime);
       }
     }
   });
@@ -94,6 +95,12 @@ function stopCommands() {
     const value = commandIntervals[index];
     if (value) {
       clearInterval(value);
+      commandIntervals[index] = undefined;
+    }
+    const timeoutValue = timeoutValues[index];
+    if (timeoutValue) {
+      clearTimeout(timeoutValue);
+      timeoutValues[index] = undefined;
     }
   }
 }
@@ -193,7 +200,7 @@ function runCommand(command) {
   // typing effect
   api.typing().catch(err => log(err));
 
-  api
+  return api
     .sendMessage(command)
     .then(res => {
       log(`Running ${command}`);
