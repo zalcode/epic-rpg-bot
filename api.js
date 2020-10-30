@@ -24,13 +24,13 @@ function createConfig() {
   };
 }
 
-function sendMessage(command) {
+function sendMessage(command, isRpg = true) {
   const { channelId } = utils.getEnv();
 
   return http.post(
     `https://discord.com/api/v8/channels/${channelId}/messages`,
     {
-      content: `RPG ${command}`,
+      content: isRpg ? `RPG ${command}` : command,
       tts: false
     },
     createConfig()

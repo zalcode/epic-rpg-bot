@@ -43,6 +43,13 @@ function getUserCooldown() {
   });
 }
 
+function executeCommand(text) {
+  if (text && text.command) {
+    return runCommand(text.command).then(() => runCommand(text.reply, false));
+  }
+  return runCommand(text);
+}
+
 function startCommands() {
   getUserCooldown().then(cooldown => {
     if (!cooldown) return;
@@ -54,13 +61,14 @@ function startCommands() {
         const callback = () => {
           if (Array.isArray(command.text) && command.text.length > 0) {
             if (command.mode === "seq") {
-              return Promise.all(command.text.map(text => runCommand(text)));
+              return Promise.all(command.text.map(executeCommand));
             } else {
               const textIndex = utils.getShiftCommand(
                 index,
                 command.text.length
               );
-              return runCommand(command.text[textIndex]);
+              const text = command.text[textIndex];
+              return executeCommand(text);
             }
           } else if (typeof command.text === "string") {
             return runCommand(command.text);
@@ -191,17 +199,17 @@ function checkNextMessages(around, limit) {
     .catch(log);
 }
 
-function runCommand(command) {
+function runCommand(command, isRpg = true) {
   if (hasGuard) {
     log(`DON'T RUN ${command} => THERE IS EPIC GUARD`);
-    return;
+    return Promise.resolve();
   }
 
   // typing effect
   api.typing().catch(err => log(err));
 
   return api
-    .sendMessage(command)
+    .sendMessage(command, isRpg)
     .then(res => {
       log(`Running ${command}`);
       const { id: around } = res.data || {};
