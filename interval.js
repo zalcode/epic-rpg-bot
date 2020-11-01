@@ -45,7 +45,10 @@ function getUserCooldown() {
 
 function executeCommand(text) {
   if (text && text.command) {
-    return runCommand(text.command).then(() => runCommand(text.reply, false));
+    return Promise.all([
+      runCommand(text.command),
+      runCommand(text.reply, false)
+    ]);
   }
   return runCommand(text);
 }
