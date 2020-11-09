@@ -7,6 +7,117 @@ let hasGuard = false;
 let limitMessage = 10;
 let intervalCheckRelease = 0;
 let limitMessageCheckJail = process.env.LIMIT_MESSAGES_JAIL || 30;
+let commands = [];
+const commandIntervals = [];
+const timeoutValues = [];
+
+try {
+  commands = JSON.parse(process.env.COMMANDS);
+} catch (error) {
+  console.log(error);
+  commands = [];
+}
+
+function findUserCooldown(messages = [], username) {
+  return messages.find(message => {
+    return (
+      message.author.username === "EPIC RPG" &&
+      message.embeds.length === 1 &&
+      message.embeds[0].author.name.indexOf(`${username}'s cooldowns`) > -1
+    );
+  });
+}
+
+function getUserCooldown() {
+  if (hasGuard) return Promise.reject("Has Guard");
+
+  const env = utils.getEnv();
+  return api.sendMessage("cooldown").then(result => {
+    return api
+      .getMessages({ limit: 5 })
+      .then(res => findUserCooldown(res.data, env.username))
+      .then(result => {
+        if (!result || result.embeds.length === 0) return;
+        return utils.getCommandsCooldown(result.embeds[0].fields);
+      });
+  });
+}
+
+function executeCommand(text) {
+  if (text && text.command) {
+    return Promise.all([
+      runCommand(text.command),
+      runCommand(text.reply, false)
+    ]);
+  }
+  return runCommand(text);
+}
+
+function startCommands() {
+  getUserCooldown()
+    .then(cooldown => {
+      if (!cooldown) return;
+
+      for (let index = 0; index < commands.length; index++) {
+        const command = commands[index] || {};
+        if (command.type || command.text) {
+          const cooldownTime = cooldown[command.type] || 0;
+          const callback = () => {
+            if (Array.isArray(command.text) && command.text.length > 0) {
+              if (command.mode === "seq") {
+                return Promise.all(command.text.map(executeCommand));
+              } else {
+                const textIndex = utils.getShiftCommand(
+                  index,
+                  command.text.length
+                );
+                const text = command.text[textIndex];
+                return executeCommand(text);
+              }
+            } else if (typeof command.text === "string") {
+              return runCommand(command.text);
+            } else {
+              return runCommand(command.type);
+            }
+          };
+          if (cooldownTime > 0) {
+            log(
+              `${command.text ? command.text : command.type}`,
+              "will run in after",
+              cooldownTime / 1000,
+              "s"
+            );
+          }
+
+          timeoutValues[index] = setTimeout(() => {
+            callback().then(() => {
+              commandIntervals[index] = setInterval(
+                callback,
+                command.interval * 1000
+              );
+            });
+          }, cooldownTime);
+        }
+      }
+    })
+    .catch(log);
+}
+
+function stopCommands() {
+  for (let index = 0; index < commandIntervals.length; index++) {
+    const value = commandIntervals[index];
+    if (value) {
+      clearInterval(value);
+      commandIntervals[index] = undefined;
+    }
+    const timeoutValue = timeoutValues[index];
+    if (timeoutValue) {
+      clearTimeout(timeoutValue);
+      timeoutValues[index] = undefined;
+    }
+  }
+  api.cancelRequest("Cancel all request because there is epic guard");
+}
 
 function checkMessagesReleasement() {
   return api.getMessages({ limit: limitMessageCheckJail }).then(res => {
@@ -42,11 +153,11 @@ function checkNextMessages(around, limit) {
     .getMessages({ around, limit })
     .then(res => {
       const data = res.data || [];
-      const sliceCount = parseInt(limit / 2, 10);
+      const sliceCount = parseInt(data.length / 2, 10);
 
       if (utils.isNeedHealAfterHunting(env.username, data, env.minHP)) {
         api
-          .sendMessage("HEAL")
+          .sendMessage("heal")
           .then(_ => checkProfile())
           .catch(log);
       }
@@ -54,7 +165,7 @@ function checkNextMessages(around, limit) {
       if (utils.isGotLootbox(env.username, data, around)) {
         log("Found Lootbox");
         api
-          .sendMessage("OPEN")
+          .sendMessage("open")
           .then(_ => log("Success open lootbox"))
           .catch(log);
       }
@@ -62,7 +173,7 @@ function checkNextMessages(around, limit) {
       if (utils.hasEpicGuard(data.slice(0, sliceCount)) !== undefined) {
         hasGuard = true;
         log("WARNING !!! There is Epic Guard");
-
+        stopCommands();
         if (intervalCheckRelease === 0) {
           intervalCheckRelease = setInterval(() => {
             log("Check has messages releasement");
@@ -73,6 +184,7 @@ function checkNextMessages(around, limit) {
                   clearInterval(intervalCheckRelease);
                   intervalCheckRelease = 0;
                   hasGuard = false;
+                  startCommands();
                 } else {
                   log("Release message not found");
                 }
@@ -93,17 +205,17 @@ function checkNextMessages(around, limit) {
     .catch(log);
 }
 
-function runCommand(command) {
+function runCommand(command, isRpg = true) {
   if (hasGuard) {
     log(`DON'T RUN ${command} => THERE IS EPIC GUARD`);
-    return;
+    return Promise.resolve();
   }
 
   // typing effect
   api.typing().catch(err => log(err));
 
-  api
-    .sendMessage(command)
+  return api
+    .sendMessage(command, isRpg)
     .then(res => {
       log(`Running ${command}`);
       const { id: around } = res.data || {};
@@ -114,44 +226,10 @@ function runCommand(command) {
     .catch(err => log(err));
 }
 
-let commandIntervals = [];
-let commands = [];
-
-try {
-  commands = JSON.parse(process.env.COMMANDS);
-} catch (error) {
-  console.log(error);
-  commands = [
-    { text: "hunt", interval: 63 },
-    { text: "pickup", interval: 303 }
-  ];
+if (!stopBot) {
+  checkProfile()
+    .then(result => {
+      startCommands();
+    })
+    .catch(log);
 }
-
-function startBot() {
-  if (!stopBot && Array.isArray(commands)) {
-    for (let index = 0; index < commands.length; index++) {
-      const { text, interval } = commands[index] || {};
-      const callbackCommand = () => {
-        if (Array.isArray(text) && text.length > 0) {
-          const textIndex = utils.getShiftCommand(index, text.length);
-          runCommand(text[textIndex]);
-        } else if (typeof text === "string") {
-          runCommand(text);
-        }
-      };
-      callbackCommand();
-      commandIntervals[index] = setInterval(callbackCommand, interval * 1000);
-      log(`START COMMAND ${text}`);
-    }
-  } else if (stopBot) {
-    log("BOT IS STOPED");
-  } else {
-    log("No running command");
-  }
-}
-
-checkProfile()
-  .then(result => {
-    startBot();
-  })
-  .catch(log);
