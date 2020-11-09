@@ -153,11 +153,11 @@ function checkNextMessages(around, limit) {
     .getMessages({ around, limit })
     .then(res => {
       const data = res.data || [];
-      const sliceCount = parseInt(limit / 2, 10);
+      const sliceCount = parseInt(data.length / 2, 10);
 
       if (utils.isNeedHealAfterHunting(env.username, data, env.minHP)) {
         api
-          .sendMessage("HEAL")
+          .sendMessage("heal")
           .then(_ => checkProfile())
           .catch(log);
       }
@@ -165,7 +165,7 @@ function checkNextMessages(around, limit) {
       if (utils.isGotLootbox(env.username, data, around)) {
         log("Found Lootbox");
         api
-          .sendMessage("OPEN")
+          .sendMessage("open")
           .then(_ => log("Success open lootbox"))
           .catch(log);
       }
