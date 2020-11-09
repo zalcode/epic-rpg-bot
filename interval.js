@@ -18,7 +18,7 @@ try {
   commands = [];
 }
 
-function findCoolDownMessage(messages = [], username) {
+function findUserCooldown(messages = [], username) {
   return messages.find(message => {
     return (
       message.author.username === "EPIC RPG" &&
@@ -29,13 +29,13 @@ function findCoolDownMessage(messages = [], username) {
 }
 
 function getUserCooldown() {
-  if (hasGuard) return;
+  if (hasGuard) return Promise.reject("Has Guard");
 
   const env = utils.getEnv();
   return api.sendMessage("cooldown").then(result => {
     return api
       .getMessages({ limit: 5 })
-      .then(res => findCoolDownMessage(res.data, env.username))
+      .then(res => findUserCooldown(res.data, env.username))
       .then(result => {
         if (!result || result.embeds.length === 0) return;
         return utils.getCommandsCooldown(result.embeds[0].fields);
@@ -54,51 +54,53 @@ function executeCommand(text) {
 }
 
 function startCommands() {
-  getUserCooldown().then(cooldown => {
-    if (!cooldown) return;
+  getUserCooldown()
+    .then(cooldown => {
+      if (!cooldown) return;
 
-    for (let index = 0; index < commands.length; index++) {
-      const command = commands[index] || {};
-      if (command.type || command.text) {
-        const cooldownTime = cooldown[command.type] || 0;
-        const callback = () => {
-          if (Array.isArray(command.text) && command.text.length > 0) {
-            if (command.mode === "seq") {
-              return Promise.all(command.text.map(executeCommand));
+      for (let index = 0; index < commands.length; index++) {
+        const command = commands[index] || {};
+        if (command.type || command.text) {
+          const cooldownTime = cooldown[command.type] || 0;
+          const callback = () => {
+            if (Array.isArray(command.text) && command.text.length > 0) {
+              if (command.mode === "seq") {
+                return Promise.all(command.text.map(executeCommand));
+              } else {
+                const textIndex = utils.getShiftCommand(
+                  index,
+                  command.text.length
+                );
+                const text = command.text[textIndex];
+                return executeCommand(text);
+              }
+            } else if (typeof command.text === "string") {
+              return runCommand(command.text);
             } else {
-              const textIndex = utils.getShiftCommand(
-                index,
-                command.text.length
-              );
-              const text = command.text[textIndex];
-              return executeCommand(text);
+              return runCommand(command.type);
             }
-          } else if (typeof command.text === "string") {
-            return runCommand(command.text);
-          } else {
-            return runCommand(command.type);
-          }
-        };
-        if (cooldownTime > 0) {
-          log(
-            `${command.text ? command.text : command.type}`,
-            "will run in after",
-            cooldownTime / 1000,
-            "s"
-          );
-        }
-
-        timeoutValues[index] = setTimeout(() => {
-          callback().then(() => {
-            commandIntervals[index] = setInterval(
-              callback,
-              command.interval * 1000
+          };
+          if (cooldownTime > 0) {
+            log(
+              `${command.text ? command.text : command.type}`,
+              "will run in after",
+              cooldownTime / 1000,
+              "s"
             );
-          });
-        }, cooldownTime);
+          }
+
+          timeoutValues[index] = setTimeout(() => {
+            callback().then(() => {
+              commandIntervals[index] = setInterval(
+                callback,
+                command.interval * 1000
+              );
+            });
+          }, cooldownTime);
+        }
       }
-    }
-  });
+    })
+    .catch(log);
 }
 
 function stopCommands() {
@@ -114,6 +116,7 @@ function stopCommands() {
       timeoutValues[index] = undefined;
     }
   }
+  api.cancelRequest("Cancel all request because there is epic guard");
 }
 
 function checkMessagesReleasement() {

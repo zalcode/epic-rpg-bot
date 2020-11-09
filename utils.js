@@ -116,7 +116,9 @@ function getRemainingHPFromProfile(fields = []) {
 function isProfileMessage(username = "", embeds = []) {
   if (embeds.length > 0) {
     const embed = embeds[0];
-    return embed.author.name.indexOf(`${username}'s profile`) >= 0;
+    return (
+      embed.author && embed.author.name.indexOf(`${username}'s profile`) >= 0
+    );
   }
 
   return false;

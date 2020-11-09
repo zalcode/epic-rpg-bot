@@ -7,6 +7,17 @@ const http = rateLimit(axios.create(), {
   perMilliseconds: 2000
 });
 
+const cancelSource = axios.CancelToken.source();
+
+http.interceptors.request.use(function(config) {
+  config.cancelToken = cancelSource.token;
+  return config;
+});
+
+function cancelRequest(reason = "Request canceled by the user.") {
+  cancelSource.cancel(reason);
+}
+
 function createConfig() {
   const { token, superProperty } = utils.getEnv();
 
@@ -30,7 +41,7 @@ function sendMessage(command, isRpg = true) {
   return http.post(
     `https://discord.com/api/v8/channels/${channelId}/messages`,
     {
-      content: isRpg ? `RPG ${command}` : command,
+      content: isRpg ? `rpg ${command}` : command,
       tts: false
     },
     createConfig()
@@ -62,5 +73,6 @@ function typing() {
 module.exports = {
   typing,
   getMessages,
-  sendMessage
+  sendMessage,
+  cancelRequest
 };
