@@ -7,15 +7,31 @@ const http = rateLimit(axios.create(), {
   perMilliseconds: 2000
 });
 
-const cancelSource = axios.CancelToken.source();
+let cancelSource = null;
+let interceptor = null;
 
-http.interceptors.request.use(function(config) {
-  config.cancelToken = cancelSource.token;
-  return config;
-});
+initCancelToken();
+
+function initCancelToken() {
+  cancelSource = axios.CancelToken.source();
+
+  if (interceptor) {
+    axios.interceptors.request.eject(interceptor);
+    interceptor = null;
+  }
+
+  interceptor = http.interceptors.request.use(function(config) {
+    if (cancelSource) {
+      config.cancelToken = cancelSource.token;
+    }
+
+    return config;
+  });
+}
 
 function cancelRequest(reason = "Request canceled by the user.") {
-  cancelSource.cancel(reason);
+  cancelSource && cancelSource.cancel(reason);
+  initCancelToken();
 }
 
 function createConfig() {

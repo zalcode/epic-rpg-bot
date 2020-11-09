@@ -116,7 +116,6 @@ function stopCommands() {
       timeoutValues[index] = undefined;
     }
   }
-  api.cancelRequest("Cancel all request because there is epic guard");
 }
 
 function checkMessagesReleasement() {
@@ -174,6 +173,7 @@ function checkNextMessages(around, limit) {
         hasGuard = true;
         log("WARNING !!! There is Epic Guard");
         stopCommands();
+        api.cancelRequest("Cancel all request because there is epic guard");
         if (intervalCheckRelease === 0) {
           intervalCheckRelease = setInterval(() => {
             log("Check has messages releasement");
